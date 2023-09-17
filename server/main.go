@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/google/go-github/v55/github"
 	"golang.org/x/oauth2"
@@ -18,6 +19,12 @@ var (
 )
 
 func main() {
+	port := os.Getenv("PORT")
+
+	if port == "" {
+		port = "8080"
+	}
+
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: accessToken},
@@ -40,6 +47,6 @@ func main() {
 		fmt.Fprintf(w, "{\"path\": [%v], \"kevinBaconNumber\": %d}", path, kevinBaconNumber)
 	})
 
-	fmt.Println("Server running on port 8080")
-	http.ListenAndServe(":8080", nil)
+	fmt.Println("listening on", port)
+	http.ListenAndServe(":"+port, nil)
 }
