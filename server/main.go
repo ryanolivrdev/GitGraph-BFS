@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"encoding/json"
 
 	"github.com/google/go-github/v55/github"
 	"golang.org/x/oauth2"
@@ -36,15 +37,67 @@ func main() {
 		userOrigin := r.URL.Query().Get("userOrigin")
 		userTarget := r.URL.Query().Get("userTarget")
 
-		path, kevinBaconNumber, err := algorithm.Bfs(ctx, client, userOrigin, userTarget, maxLevel, maxFollowersToVisitPerUser)
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+		if userOrigin == "" || userTarget == "" {
+			fmt.Printf("Error: %v\n", "Parametros invalidos")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			data := map[string]interface{}{
+				"error": "Parametros invalidos",
+			}
+			json.NewEncoder(w).Encode(data)
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
+		fmt.Println(userOrigin, userTarget)
+		//NORMALIZAR
+		
+
+		_, _, err := client.Users.Get(ctx, userOrigin)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			data := map[string]interface{}{
+				"error": "Usuario de origen nao encontrado",
+			}
+			json.NewEncoder(w).Encode(data)
+			return
+		}
+
+		_, _, err = client.Users.Get(ctx, userTarget)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			data := map[string]interface{}{
+				"error": "Usuario de destino nao encontrado",
+			}
+			json.NewEncoder(w).Encode(data)
+			return
+		}
+
+		path, kevinBaconNumber, err := algorithm.Bfs(ctx, client, userOrigin, userTarget, maxLevel, maxFollowersToVisitPerUser)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			data := map[string]interface{}{
+				"error": err,
+			}
+			json.NewEncoder(w).Encode(data)
+			return
+		}
+
 		fmt.Println(path, kevinBaconNumber)
-		fmt.Fprintf(w, "{\"path\": [%v], \"kevinBaconNumber\": %d}", path, kevinBaconNumber)
+		w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+		data := map[string]interface{}{
+			"path":               path,
+			"kevinBaconNumber":   kevinBaconNumber,
+			"maxLevel":           maxLevel,
+			"maxFollowersToVisitPerUser": maxFollowersToVisitPerUser,
+		}
+    json.NewEncoder(w).Encode(data)
 	})
 
 	fmt.Println("listening on", port)
